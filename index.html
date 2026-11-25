@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VulnScope</title>
+<meta name="description" content="K-means vulnerability tiers for schools and colleges, validated against district disaster history, to decide who gets disaster training first.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Public+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="app">
+
+  <aside class="side">
+    <a class="brand" href="#overview" aria-label="VulnScope home">
+      <svg class="mark" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+        <path d="M16 3 A13 13 0 0 1 28.6 12.8 L22 14.6 A6.2 6.2 0 0 0 16 9.8Z" style="fill:var(--r1)"/>
+        <path d="M28.6 12.8 A13 13 0 0 1 22.6 26.8 L18.9 21.3 A6.2 6.2 0 0 0 22 14.6Z" style="fill:var(--r3)"/>
+        <path d="M22.6 26.8 A13 13 0 0 1 6.4 25.6 L10.4 20.4 A6.2 6.2 0 0 0 18.9 21.3Z" style="fill:var(--r4)"/>
+        <path d="M6.4 25.6 A13 13 0 0 1 16 3 L16 9.8 A6.2 6.2 0 0 0 10.4 20.4Z" style="fill:var(--r6)"/>
+      </svg>
+      <span class="brand-t"><b>VulnScope</b><small>SIH26012</small></span>
+    </a>
+
+    <nav class="nav" aria-label="Sections">
+      <a href="#overview" data-nav="overview">Overview</a>
+      <p class="nav-h">The three steps</p>
+      <a href="#features" data-nav="features"><i>1</i>Compile features</a>
+      <a href="#segment" data-nav="segment"><i>2</i>Cluster with k-means</a>
+      <a href="#validate" data-nav="validate"><i>3</i>Validate the tiers</a>
+      <p class="nav-h">Use the result</p>
+      <a href="#plan" data-nav="plan">Training plan</a>
+      <a href="#method" data-nav="method">Method and data</a>
+    </nav>
+
+    <div class="side-foot">
+      <button type="button" class="btn ghost" id="themeBtn" aria-pressed="false">Dark mode</button>
+      <p>K-means clustering of educational institutions by disaster-vulnerability profile, for training prioritisation.</p>
+    </div>
+  </aside>
+
+  <main id="main" class="main" tabindex="-1">
+    <p class="note" id="demoNote"><b>Demonstration data.</b> The institutions and district disaster records are generated for this demo. Load your own CSV files under <a href="#features">Compile features</a>.</p>
+
+    <!-- ===== Overview ===== -->
+    <section class="tab" id="tab-overview" data-tab="overview">
+      <div class="hero">
+        <div class="hero-copy">
+          <h1>Which schools should get disaster training first?</h1>
+          <p class="lede" id="heroLede"></p>
+          <dl class="stats" id="heroStats"></dl>
+          <div class="ribbon" id="ribbon" role="img" aria-label="Share of institutions in each vulnerability tier"></div>
+          <ul class="legend" id="ribbonLegend"></ul>
+          <div class="actions">
+            <a class="btn primary" href="#plan">See the training order</a>
+            <a class="btn" href="#validate">Check tiers against history</a>
+          </div>
+        </div>
+        <div class="box hero-map">
+          <div class="box-head">
+            <h2>Tier mix by district</h2>
+            <label class="sel"><span class="sr">Zoom to district</span>
+              <select id="geoSel"></select>
+            </label>
+          </div>
+          <p class="hint" id="geoHint"></p>
+          <div id="geoChart" class="chart-host"></div>
+          <ul class="legend" id="geoLegend"></ul>
+        </div>
+      </div>
+
+      <div class="two">
+        <div>
+          <h2>First ten to train</h2>
+          <div class="tablewrap"><table class="tbl" id="topTable"></table></div>
+        </div>
+        <div>
+          <h2>What the data shows</h2>
+          <ul class="findings" id="findings"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 1 Features ===== -->
+    <section class="tab" id="tab-features" data-tab="features" hidden>
+      <header class="ph">
+        <h1><span class="step">1</span>Compile features</h1>
+        <p class="lede">Each institution is described by 13 measures in three groups: how well the building and its readiness hold up, how hazardous the site is, and what has already gone wrong there.</p>
+      </header>
+
+      <div class="groups" id="featureGroups"></div>
+
+      <div class="box dataops">
+        <div class="box-head"><h2>Your data</h2></div>
+        <p class="hint">Upload CSV files with the same columns as the demo files to run the whole pipeline on your own institutions. Everything stays in your browser.</p>
+        <div class="actions wrap">
+          <label class="btn file">Load institutions CSV<input type="file" id="fileInst" accept=".csv,text/csv"></label>
+          <label class="btn file">Load district history CSV<input type="file" id="fileHist" accept=".csv,text/csv"></label>
+          <button type="button" class="btn" id="dlInst">Download institutions CSV</button>
+          <button type="button" class="btn" id="dlHist">Download district history CSV</button>
+          <button type="button" class="btn ghost" id="resetData">Back to demo data</button>
+        </div>
+        <p class="status" id="dataStatus" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="tbar">
+        <h2>Institutions</h2>
+        <div class="filters">
+          <label class="fld"><span class="sr">Search</span><input type="search" id="tQ" placeholder="Search name or ID"></label>
+          <label class="fld"><span class="sr">District</span><select id="tDistrict"></select></label>
+          <label class="fld"><span class="sr">Tier</span><select id="tTier"></select></label>
+        </div>
+      </div>
+      <div class="tablewrap"><table class="tbl clickable" id="instTable"></table></div>
+      <div class="pager" id="pager"></div>
+    </section>
+
+    <!-- ===== 2 Segment ===== -->
+    <section class="tab" id="tab-segment" data-tab="segment" hidden>
+      <header class="ph">
+        <h1><span class="step">2</span>Cluster with k-means</h1>
+        <p class="lede">K-means groups institutions with similar profiles, then each group is ranked by its average vulnerability to become a tier. Change a setting and every tab updates.</p>
+      </header>
+
+      <div class="controls box">
+        <div class="ctl">
+          <label for="kRange">Number of tiers (k)</label>
+          <div class="rng"><input type="range" id="kRange" min="2" max="6" step="1" value="4"><output id="kOut">4</output></div>
+        </div>
+        <div class="ctl">
+          <label for="wInfra">Weight: infrastructure and readiness</label>
+          <div class="rng"><input type="range" id="wInfra" min="0" max="2" step="0.1" value="1"><output id="wInfraOut">1.0</output></div>
+        </div>
+        <div class="ctl">
+          <label for="wHazard">Weight: location hazard</label>
+          <div class="rng"><input type="range" id="wHazard" min="0" max="2" step="0.1" value="1"><output id="wHazardOut">1.0</output></div>
+        </div>
+        <div class="ctl">
+          <label for="wIncident">Weight: past incidents</label>
+          <div class="rng"><input type="range" id="wIncident" min="0" max="2" step="0.1" value="1"><output id="wIncidentOut">1.0</output></div>
+        </div>
+        <div class="ctl ctl-seed">
+          <label for="seedIn">Random seed</label>
+          <div class="seedrow"><input type="number" id="seedIn" min="1" max="9999" value="11"><button type="button" class="btn" id="reseed">New seed</button><button type="button" class="btn ghost" id="resetCtl">Reset</button></div>
+        </div>
+      </div>
+
+      <div class="quality" id="quality"></div>
+
+      <div class="split">
+        <div class="box">
+          <div class="box-head">
+            <h2>Watch it converge</h2>
+            <div class="player">
+              <button type="button" class="btn" id="playBtn">Play</button>
+              <label class="sr" for="iterRange">Iteration</label>
+              <input type="range" id="iterRange" min="1" max="1" value="1">
+            </div>
+          </div>
+          <p class="hint" id="iterHint"></p>
+          <div id="pcaChart" class="chart-host"></div>
+          <ul class="legend" id="pcaLegend"></ul>
+        </div>
+        <div class="stack">
+          <div class="box">
+            <h2>Inertia by k</h2>
+            <p class="hint">Look for the bend. Lower is tighter, but it always falls as k grows.</p>
+            <div id="elbowChart" class="chart-host"></div>
+          </div>
+          <div class="box">
+            <h2>Silhouette by k</h2>
+            <p class="hint">Higher means institutions sit closer to their own tier than to another.</p>
+            <div id="silChart" class="chart-host"></div>
+          </div>
+        </div>
+      </div>
+
+      <h2>The tiers</h2>
+      <div class="tiercards" id="tierCards"></div>
+
+      <div class="box">
+        <h2>What sets each tier apart</h2>
+        <p class="hint">Average of each measure, in standard deviations from the dataset average. Positive means worse than average, negative means better.</p>
+        <div id="profileChart" class="chart-host"></div>
+      </div>
+    </section>
+
+    <!-- ===== 3 Validate ===== -->
+    <section class="tab" id="tab-validate" data-tab="validate" hidden>
+      <header class="ph">
+        <h1><span class="step">3</span>Validate the tiers</h1>
+        <p class="lede">The clustering never sees district disaster records. If the tiers are meaningful, districts with worse histories should end up with more vulnerable institutions.</p>
+      </header>
+      <div id="verdict"></div>
+
+      <div class="split">
+        <div class="box">
+          <h2>Vulnerability against disaster history</h2>
+          <p class="hint">One point per district. The line is a least-squares fit.</p>
+          <div id="valScatter" class="chart-host"></div>
+        </div>
+        <div class="box">
+          <h2>Agreement measures</h2>
+          <div id="valMeasures"></div>
+        </div>
+      </div>
+
+      <div class="split even">
+        <div class="box">
+          <h2>Average district severity by tier</h2>
+          <p class="hint">Each institution takes its district's history score. Above zero is worse than the typical district.</p>
+          <div id="valTier" class="chart-host"></div>
+        </div>
+        <div class="box">
+          <h2>Where each tier's institutions sit</h2>
+          <p class="hint">Share of each tier in districts with a low, middle or high history score.</p>
+          <div id="valCross" class="chart-host"></div>
+        </div>
+      </div>
+
+      <h2>District records</h2>
+      <div class="tablewrap"><table class="tbl" id="valTable"></table></div>
+      <p class="hint pad">History score is the average of the four measures after standardising each across districts.</p>
+    </section>
+
+    <!-- ===== Plan ===== -->
+    <section class="tab" id="tab-plan" data-tab="plan" hidden>
+      <header class="ph">
+        <h1>Training plan</h1>
+        <p class="lede">Institutions are ranked by vulnerability, how unprepared they are, and how many people are inside. Choose how many your training teams can reach.</p>
+      </header>
+
+      <div class="split">
+        <div class="box">
+          <div class="ctl wide">
+            <label for="nRange">Institutions to train</label>
+            <div class="rng"><input type="range" id="nRange" min="10" max="740" step="10" value="100"><output id="nOut">100</output></div>
+          </div>
+          <div id="planStats"></div>
+          <div id="gainChart" class="chart-host"></div>
+        </div>
+        <div class="box">
+          <h2>Selected institutions by district</h2>
+          <div id="planDistrict" class="chart-host"></div>
+        </div>
+      </div>
+
+      <h2>What each tier gets</h2>
+      <div class="playbooks" id="playbooks"></div>
+
+      <div class="box">
+        <h2>Hazard modules needed</h2>
+        <p class="hint">Training content follows the main hazard at each selected site.</p>
+        <div id="hazardMods"></div>
+      </div>
+
+      <div class="tbar">
+        <h2>Priority list</h2>
+        <div class="actions wrap">
+          <button type="button" class="btn" id="dlPlan">Download CSV</button>
+          <button type="button" class="btn" id="copyPlan">Copy CSV</button>
+        </div>
+      </div>
+      <div class="tablewrap"><table class="tbl clickable" id="planTable"></table></div>
+      <div class="pager" id="planPager"></div>
+    </section>
+
+    <!-- ===== Method ===== -->
+    <section class="tab" id="tab-method" data-tab="method" hidden>
+      <header class="ph">
+        <h1>Method and data</h1>
+        <p class="lede">How the numbers are produced, what the CSV files must contain, and what this demo cannot tell you.</p>
+      </header>
+      <div id="methodBody" class="prose"></div>
+    </section>
+
+    <footer class="foot">VulnScope for SIH26012. Demonstration data is generated. Open the source in <code>js/</code> and the Python pipeline in <code>python/</code>.</footer>
+  </main>
+</div>
+
+<div class="drawer" id="drawer" hidden>
+  <div class="drawer-bg" id="drawerBg"></div>
+  <aside class="drawer-box" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+    <button type="button" class="btn ghost close" id="drawerClose">Close</button>
+    <div id="drawerBody"></div>
+  </aside>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/kmeans.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
